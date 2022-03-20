@@ -1,14 +1,11 @@
 import * as THREE from "three";
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import * as CANNON from "cannon-es";
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
-import spedobj from "../assets/doughboy.obj";
-import CannonDebugger from "cannon-es-debugger";
+import earthmap1k from "../assets/earthmap1k.jpeg";
+import earthbumps from "../assets/8081_earthbump10k.jpg";
+import earthspecular from "../assets/8081_earthspec10k.jpg";
 //import { World, Body, Vec3, Box} from "cannon-es";
 
 let container;
 let camera, scene, renderer;
-let cube;
 
 const initThree = () => {
   container = document.createElement("div");
@@ -16,139 +13,88 @@ const initThree = () => {
 
   scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-  camera.position.z = 10;
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.0001, 2000);
+  camera.position.z = 6.5;
 
-  const geometry = new THREE.BoxGeometry();
-  const material = new THREE.MeshBasicMaterial({ color: 0x1cb2f5, side: THREE.DoubleSide});
-  cube = new THREE.Mesh(geometry, material);
-  cube.position.set(0.5, 5, 0);
-  scene.add(cube);
 
-  const geometry2 = new THREE.PlaneGeometry(10, 10);
-  const material2 = new THREE.MeshBasicMaterial( {color: 0xFFFFFF, side: THREE.DoubleSide} );
-  const plane = new THREE.Mesh( geometry2, material2 );
-  plane.rotation.x = - Math.PI / 2;
-  plane.receiveShadow = true;
-  plane.position.y = -1;
-  scene.add( plane );
+  var geometry = new THREE.SphereGeometry(5, 200, 100);
+  var material = new THREE.MeshPhongMaterial();
+  var earthMesh = new THREE.Mesh(geometry, material);
+  earthMesh.receiveShadow = true;
+  material.map = new THREE.TextureLoader().load(earthmap1k);
+  material.bumpMap = new THREE.TextureLoader().load(earthbumps);
+  material.bumpScale = 0.1;
+  material.specularMap = new THREE.TextureLoader().load(earthspecular);
+  material.specular = new THREE.Color('darkgrey');
+  material.shininess = 10;
+  scene.add(earthMesh);
 
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-  light.position.set(0.5, 1, 0.25);
-  scene.add(light);
+  geometry = new THREE.BoxGeometry(0.025, 0.025, 0.025);
+  material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  var cubeMesh = new THREE.Mesh(geometry, material);
+  cubeMesh.castShadow = true; //default is false
+  cubeMesh.position.z = 6;
+  scene.add(cubeMesh);
+
+  const directionalLight = new THREE.DirectionalLight( 0xADD8E6, 0.4, 2);
+  directionalLight.position.set(0.5, 0.5, 10);
+  directionalLight.castShadow = true;
+  scene.add( directionalLight );
+
+  const directionalLight2 = new THREE.DirectionalLight( 0xADD8E6, 0.2, 2);
+  directionalLight2.position.set(5, 5, 100);
+  directionalLight2.castShadow = false;
+  scene.add( directionalLight2 );
+
+  //var light = new THREE.HemisphereLight(0x404040, 0xFFFFFF, 0.3);
+  //scene.add(light);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x000000);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
 
-  let keys = [];//Define array
+
+  const ANGULAR_SPEED = 0.1;
+
+  const AXES = {
+    x: new THREE.Vector3(1, 0, 0),
+    y: new THREE.Vector3(0, 1, 0),
+  }
+
+  function rotateEarthX(angle) {
+    earthMesh.rotateOnWorldAxis(AXES.x, angle);
+  }
+
+  function rotateEarthY(angle) {
+    earthMesh.rotateOnWorldAxis(AXES.y, angle);
+  }
 
   window.addEventListener('keydown',keydown);
   window.addEventListener('keyup',keyup);
-  //Attach listeners to functions
 
   function keydown(e){ keys[e.key] = true; }
 
   function keyup(e){ keys[e.key] = false; }
 
-  const controls = new PointerLockControls( camera, renderer.domElement );
+  let keys = {};
+
   window.addEventListener("resize", onWindowResize, false);
-  window.addEventListener( 'click', function () {controls.lock();}, false );
-
-  const world = new CANNON.World();
-  world.gravity.set(0, -9.82, 0);
-  const cubeShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
-  const cubeBody = new CANNON.Body({mass: 1});
-  cubeBody.addShape(cubeShape);
-  cubeBody.position.x = cube.position.x;
-  cubeBody.position.y = cube.position.y;
-  cubeBody.position.z = cube.position.z;
-  world.addBody(cubeBody);
-
-  const planeShape = new CANNON.Plane();
-  const planeBody = new CANNON.Body({mass : 0});
-  planeBody.addShape(planeShape);
-  planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-  planeBody.position.x = plane.position.x;
-  planeBody.position.y = plane.position.y;
-  planeBody.position.z = plane.position.z;
-  world.addBody(planeBody);
-
-  //figure
-  let spedMeshes = [];
-  let spedBody;
-  let loaded = false;
-
-  const objLoader = new OBJLoader();
-  objLoader.load(
-    spedobj,
-    function (object) {
-      console.log(object);
-      for(var i = 0; i < object.children.length; i++) {
-        const tempmesh = object.children[i].clone();
-        tempmesh.position.y += 10;
-        tempmesh.material = new THREE.MeshNormalMaterial();
-        tempmesh.scale.set(0.5, 0.5, 0.5);
-        spedMeshes.push(tempmesh);
-        scene.add(tempmesh);
-      }
-      spedBody = new CANNON.Body({ mass : 5 });
-      spedBody.addShape(new CANNON.Box(new CANNON.Vec3(0.75, 1.75, 0.75)), new CANNON.Vec3(0, 1.75, 0));
-      //spedBody.addShape(new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)), new CANNON.Vec3(0, 0, 0));
-      spedBody.position.x = object.position.x;
-      spedBody.position.y = object.position.y + 10;
-      spedBody.position.z = object.position.z;
-      world.addBody(spedBody);
-      loaded = true;
-    },
-    (error) => {
-      console.log("An error occurred:");
-      console.log(error);
-    }
-  )
-
-  const debug = new CannonDebugger(scene, world);;
-
-  let delta;
-  const render = (timestamp, frame) => {
-    if(keys['w']) controls.moveForward(.1);
-    if(keys['s']) controls.moveForward(-.1);
-    if(keys['a']) controls.moveRight(-.1);
-    if(keys['d']) controls.moveRight(.1);
-
-    delta = Math.min(clock.getDelta(), 0.1);
-    world.step(delta);
-    debug.update()
-    cube.position.set(
-      cubeBody.position.x,
-      cubeBody.position.y,
-      cubeBody.position.z
-    )
-    cube.quaternion.set(
-      cubeBody.quaternion.x,
-      cubeBody.quaternion.y,
-      cubeBody.quaternion.z,
-      cubeBody.quaternion.w,
-    )
-
-
-    if(loaded) {
-      for(var i = 0; i < spedMeshes.length; i++) {
-        spedMeshes[i].position.x = spedBody.position.x;
-        spedMeshes[i].position.y = spedBody.position.y;
-        spedMeshes[i].position.z = spedBody.position.z;
-        spedMeshes[i].quaternion.x = spedBody.quaternion.x;
-        spedMeshes[i].quaternion.y = spedBody.quaternion.y;
-        spedMeshes[i].quaternion.z = spedBody.quaternion.z;
-        spedMeshes[i].quaternion.w = spedBody.quaternion.w;
-      }
-    }
-    renderer.render(scene, camera);
-  };
 
   const clock = new THREE.Clock();
+  let delta;
+  const render = (timestamp, frame) => {
+    delta = Math.min(clock.getDelta(), 0.1);
+    if(keys['w']) rotateEarthX(delta * ANGULAR_SPEED);
+    if(keys['s']) rotateEarthX(-delta * ANGULAR_SPEED);
+    if(keys['a']) rotateEarthY(delta * ANGULAR_SPEED);
+    if(keys['d']) rotateEarthY(-delta * ANGULAR_SPEED);
+
+    renderer.render(scene, camera);
+  };
 
   const animate = () => {
     renderer.setAnimationLoop(render);
