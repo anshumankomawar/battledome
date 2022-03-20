@@ -47,7 +47,7 @@ module.exports = {
                 include: path.resolve(__dirname, 'src'),
             },
             {
-                test: /\.(png|jpg|gif|svg)$/i,
+                test: /\.(png|jpg|gif|svg|obj|blend)$/i,
                 use: [
                     {
                         loader: 'url-loader',

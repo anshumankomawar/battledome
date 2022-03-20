@@ -109,3 +109,5 @@ Thumbs.db
 !.gitignore
 !.nvmrc
 !.phpcs.xml.diste
+
+*.lock
