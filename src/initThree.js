@@ -14,7 +14,7 @@ const initThree = () => {
   scene = new THREE.Scene();
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.0001, 2000);
-  camera.position.z = 6.5;
+  camera.position.z = 10;
 
 
   var geometry = new THREE.SphereGeometry(5, 200, 100);
@@ -36,15 +36,23 @@ const initThree = () => {
   cubeMesh.position.z = 6;
   scene.add(cubeMesh);
 
-  const directionalLight = new THREE.DirectionalLight( 0xADD8E6, 0.4, 2);
+  var cubeMesh1 = new THREE.Mesh(geometry, material);
+  cubeMesh1.castShadow = true; //default is false
+  cubeMesh1.position.z = 5.1;
+
+  var pivot = new THREE.Group();
+  scene.add(pivot);
+  pivot.add(cubeMesh1);
+
+  const directionalLight = new THREE.DirectionalLight(0xADD8E6, 0.4, 2);
   directionalLight.position.set(0.5, 0.5, 10);
   directionalLight.castShadow = true;
-  scene.add( directionalLight );
+  scene.add(directionalLight);
 
-  const directionalLight2 = new THREE.DirectionalLight( 0xADD8E6, 0.2, 2);
+  const directionalLight2 = new THREE.DirectionalLight(0xADD8E6, 0.2, 2);
   directionalLight2.position.set(5, 5, 100);
   directionalLight2.castShadow = false;
-  scene.add( directionalLight2 );
+  scene.add(directionalLight2);
 
   //var light = new THREE.HemisphereLight(0x404040, 0xFFFFFF, 0.3);
   //scene.add(light);
@@ -57,42 +65,81 @@ const initThree = () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
 
-
-  const ANGULAR_SPEED = 0.1;
-
-  const AXES = {
+  const ANGULAR_SPEED = 0.15;
+  var AXES = {
     x: new THREE.Vector3(1, 0, 0),
     y: new THREE.Vector3(0, 1, 0),
   }
 
-  function rotateEarthX(angle) {
-    earthMesh.rotateOnWorldAxis(AXES.x, angle);
+  function updateX(q) {
+    AXES.x = AXES.x.applyQuaternion(q);
+    AXES.y = AXES.y.applyQuaternion(q);
+    AXES.x.normalize();
+    AXES.y.normalize();
+    console.log("right", AXES.x);
+    console.log("up", AXES.y);
   }
 
-  function rotateEarthY(angle) {
-    earthMesh.rotateOnWorldAxis(AXES.y, angle);
+  function updateY(q) {
+    AXES.x = AXES.x.applyQuaternion(q);
+    AXES.y = AXES.y.applyQuaternion(q);
+    AXES.x.normalize();
+    AXES.y.normalize();
+    //AXES.y.rotateOnWorldAxis();
+    console.log("right", AXES.x);
+    console.log("up", AXES.y);
   }
 
-  window.addEventListener('keydown',keydown);
-  window.addEventListener('keyup',keyup);
+  const AXESUPDATES = {
+    ArrowUp: new THREE.Quaternion().setFromAxisAngle(AXES.x, THREE.MathUtils.degToRad(-ANGULAR_SPEED * 6)),
+    ArrowDown: new THREE.Quaternion().setFromAxisAngle(AXES.x, THREE.MathUtils.degToRad(ANGULAR_SPEED * 6)),
+    ArrowLeft: new THREE.Quaternion().setFromAxisAngle(AXES.y, THREE.MathUtils.degToRad(-ANGULAR_SPEED * 6)),
+    ArrowRight: new THREE.Quaternion().setFromAxisAngle(AXES.y, THREE.MathUtils.degToRad(ANGULAR_SPEED * 6)),
+  }
 
-  function keydown(e){ keys[e.key] = true; }
+  const MOVEMENTS = {
+    ArrowUp: new THREE.Quaternion().setFromAxisAngle(AXES.x, THREE.MathUtils.degToRad(ANGULAR_SPEED * 6)),
+    ArrowDown: new THREE.Quaternion().setFromAxisAngle(AXES.x, THREE.MathUtils.degToRad(-ANGULAR_SPEED * 6)),
+    ArrowLeft: new THREE.Quaternion().setFromAxisAngle(AXES.y, THREE.MathUtils.degToRad(ANGULAR_SPEED * 6)),
+    ArrowRight: new THREE.Quaternion().setFromAxisAngle(AXES.y, THREE.MathUtils.degToRad(-ANGULAR_SPEED * 6)),
+  }
 
-  function keyup(e){ keys[e.key] = false; }
+  function rotateEarth(q) {
+    earthMesh.applyQuaternion(q);
+    console.log(earthMesh.quaternion);
+  }
+
+  window.addEventListener('keydown', keydown);
+  //Attach listeners to functions
+  window.addEventListener('keyup', keyup);
+
+  function keydown(e) { keys[e.key] = true; }
+  function keyup(e) { keys[e.key] = false; }
 
   let keys = {};
 
   window.addEventListener("resize", onWindowResize, false);
-
   const clock = new THREE.Clock();
   let delta;
   const render = (timestamp, frame) => {
-    delta = Math.min(clock.getDelta(), 0.1);
-    if(keys['w']) rotateEarthX(delta * ANGULAR_SPEED);
-    if(keys['s']) rotateEarthX(-delta * ANGULAR_SPEED);
-    if(keys['a']) rotateEarthY(delta * ANGULAR_SPEED);
-    if(keys['d']) rotateEarthY(-delta * ANGULAR_SPEED);
+    if (keys['w']) {
+      rotateEarth(MOVEMENTS.ArrowUp);
+      updateX(AXESUPDATES.ArrowDown);
+    }
+    if (keys['s']) {
+      rotateEarth(MOVEMENTS.ArrowDown);
+      updateX(AXESUPDATES.ArrowUp);
+    }
+    if (keys['a']) {
+      rotateEarth(MOVEMENTS.ArrowLeft);
+      updateY(AXESUPDATES.ArrowRight);
+    }
+    if (keys['d']) {
+      rotateEarth(MOVEMENTS.ArrowRight);
+      updateY(AXESUPDATES.ArrowLeft);
+    }
 
+    pivot.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3().crossVectors(AXES.x, AXES.y)));
     renderer.render(scene, camera);
   };
 
