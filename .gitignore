@@ -109,3 +109,7 @@ Thumbs.db
 !.gitignore
 !.nvmrc
 !.phpcs.xml.diste
+
+# yarn stuff
+*.lock
+build/
