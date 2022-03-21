@@ -3,6 +3,7 @@ import earthmap1k from "../assets/earthmap1k.jpeg";
 import earthbumps from "../assets/8081_earthbump10k.jpg";
 import earthspecular from "../assets/8081_earthspec10k.jpg";
 import Map from "./map";
+import {io} from "socket.io-client";
 //import { World, Body, Vec3, Box} from "cannon-es";
 
 let container;
@@ -11,6 +12,11 @@ let camera, scene, renderer;
 const initThree = () => {
   container = document.createElement("div");
   document.body.appendChild(container);
+
+  const socket = io()
+  socket.on('connect', function () {
+      console.log('connect')
+  })
 
   scene = new THREE.Scene();
 

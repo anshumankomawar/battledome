@@ -81,6 +81,20 @@ module.exports = {
             },
         },
     },
+    devServer: {
+        static: {
+            directory: path.join(__dirname, '/public'),
+        },
+        hot: true,
+        proxy: {
+            '/socket.io': {
+                target: 'http://127.0.0.1:3000',
+                ws: true,
+            },
+        },
+        // port: 3000,
+        // publicPath: 'http://localhost:3000/',
+    },
     plugins: [
         new CleanWebpackPlugin({
             cleanOnceBeforeBuildPatterns: [
