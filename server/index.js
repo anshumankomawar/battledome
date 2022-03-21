@@ -7,6 +7,11 @@ app.use(express.static(DIST_DIR))
 app.get('*', (req, res) => {
     res.sendFile(HTML_FILE)
 })
+
+app.post('*', (req, res) => {
+  res.status(201).end();
+})
+
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
     console.log(`App listening to ${PORT}....`)
